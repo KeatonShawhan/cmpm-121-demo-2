@@ -44,13 +44,39 @@ class MarkerLine {
       ctx.stroke();
       ctx.closePath();
     }
-}  
+}
+
+class ToolPreview {
+    x: number;
+    y: number;
+    thickness: number;
+  
+    constructor(x: number, y: number, thickness: number) {
+      this.x = x;
+      this.y = y;
+      this.thickness = thickness;
+    }
+  
+    draw(ctx: CanvasRenderingContext2D) {
+      if (ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.thickness, 0, 2 * Math.PI);
+        ctx.fillStyle = "black";
+        ctx.fill();
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.closePath();
+      }
+    }
+}
   
 let currentThickness = 3;
 
 let drawing: Array<MarkerLine> = [];
 let currentStroke: MarkerLine | null = null;
 let redo: Array<MarkerLine> = [];
+let currentToolPreview: ToolPreview | null = null;
 
 let isDrawing = false;
 
@@ -59,12 +85,17 @@ const context = canvas.getContext("2d");
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
   currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
+  currentToolPreview = null;
+  canvas.style.cursor = "none";
 });
   
 canvas.addEventListener("mousemove", (e) => {
   if (currentStroke && isDrawing) {
     currentStroke.drag(e.offsetX, e.offsetY);
     canvas.dispatchEvent(new Event("drawing-changed"));
+  } else{
+    currentToolPreview = null;
+    updateCursor(currentThickness);
   }
 });
   
@@ -74,6 +105,7 @@ canvas.addEventListener("mousemove", (e) => {
       drawing.push(currentStroke);
       currentStroke = null;
       canvas.dispatchEvent(new Event("drawing-changed"));
+      updateCursor(currentThickness);
     }
   });
   
@@ -87,6 +119,18 @@ canvas.addEventListener("mousemove", (e) => {
         for (const stroke of copy) {
             stroke.display(context);
         }
+    }
+  });
+
+  canvas.addEventListener("tool-moved", () => {
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+  
+      for (const line of drawing) {
+        line.display(context);
+      }
+  
+      currentToolPreview?.draw(context);
     }
   });
 
@@ -127,12 +171,32 @@ function setMarkerThickness(thickness: number, selectedButton: HTMLButtonElement
     if (selectedButton.classList.contains("selectedTool")){
         currentThickness = 3;
         selectedButton.classList.remove("selectedTool");
+        updateCursor(thickness);
         return;
     }
     currentThickness = thickness;
     document.querySelectorAll(".tool-button").forEach(button => button.classList.remove("selectedTool"));
     selectedButton.classList.add("selectedTool");
+    updateCursor(thickness);
 }
+
+function updateCursor(thickness: number) {
+    const cursorCanvas = document.createElement("canvas");
+    cursorCanvas.width = thickness * 2;
+    cursorCanvas.height = thickness * 2;
+  
+    const ctx = cursorCanvas.getContext("2d");
+    if (ctx) {
+      ctx.beginPath();
+      ctx.arc(thickness, thickness, thickness, 0, 2 * Math.PI);
+      ctx.fillStyle = "black";
+      ctx.fill();
+      ctx.closePath();
+    }
+  
+    const dataURL = cursorCanvas.toDataURL("image/png");
+    canvas.style.cursor = `url(${dataURL}) ${thickness / 2} ${thickness / 2}, auto`;
+  }
 
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
@@ -157,3 +221,5 @@ thickButton.classList.add("tool-button");
 thickButton.addEventListener("click", () => setMarkerThickness(6, thickButton));
 
 app.append(thinButton, thickButton, clearButton, undoButton, redoButton);
+
+updateCursor(currentThickness);
