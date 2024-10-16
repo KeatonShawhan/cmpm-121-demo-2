@@ -76,6 +76,7 @@ canvas.addEventListener("mousedown", (e) => {
 function clearCanvas() {
     if (context){
         context.clearRect(0, 0, canvas.width, canvas.height);
+        // confused if slides want clear->undo to be viable...
         drawing = [];
     }
 }
