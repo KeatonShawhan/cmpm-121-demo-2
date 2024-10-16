@@ -16,37 +16,61 @@ canvas.width = 256;
 canvas.height = 256;
 app.append(canvas);
 
-let drawing: Array<Array<{ x: number; y: number }>> = [];
-let currentStroke: Array<{ x: number; y: number }> = [];
-let redo: Array<Array<{ x: number; y: number }>> = [];
+class MarkerLine {
+    private points: Array<{ x: number; y: number }>;
+  
+    constructor(initialX: number, initialY: number) {
+      this.points = [{ x: initialX, y: initialY }];
+    }
+  
+    drag(x: number, y: number) {
+      this.points.push({ x, y });
+    }
+  
+    display(ctx: CanvasRenderingContext2D) {
+      if (this.points.length === 0) return;
+  
+      ctx.beginPath();
+      ctx.moveTo(this.points[0].x, this.points[0].y);
+  
+      for (let i = 1; i < this.points.length; i++) {
+        ctx.lineTo(this.points[i].x, this.points[i].y);
+      }
+  
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.closePath();
+    }
+  }  
+  
+
+let drawing: Array<MarkerLine> = [];
+let currentStroke: MarkerLine | null = null;
+let redo: Array<MarkerLine> = [];
 
 let isDrawing = false;
 
 const context = canvas.getContext("2d");
 
 canvas.addEventListener("mousedown", (e) => {
-    isDrawing = true;
-    currentStroke = [];
-    const point = { x: e.offsetX, y: e.offsetY };
-    currentStroke.push(point);
-  });
+  isDrawing = true;
+  currentStroke = new MarkerLine(e.offsetX, e.offsetY);
+});
   
-  canvas.addEventListener("mousemove", (e) => {
-    if (isDrawing) {
-      const point = { x: e.offsetX, y: e.offsetY };
-      currentStroke.push(point);
-      canvas.dispatchEvent(new Event("drawing-changed"));
-    }
-  });
+canvas.addEventListener("mousemove", (e) => {
+  if (currentStroke && isDrawing) {
+    currentStroke.drag(e.offsetX, e.offsetY);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
+});
   
   window.addEventListener("mouseup", () => {
-    if (isDrawing) {
+    if (isDrawing && currentStroke) {
       isDrawing = false;
-      if (currentStroke.length > 0) {
-        drawing.push(currentStroke);
-        currentStroke = [];
-        canvas.dispatchEvent(new Event("drawing-changed"));
-      }
+      drawing.push(currentStroke);
+      currentStroke = null;
+      canvas.dispatchEvent(new Event("drawing-changed"));
     }
   });
   
@@ -54,21 +78,11 @@ canvas.addEventListener("mousedown", (e) => {
     if (context){
         context.clearRect(0, 0, canvas.width, canvas.height);
         let copy = [...drawing];
-        copy.push(currentStroke);
-        for (const stroke of copy) {
-            context.beginPath();
-            for (let i = 0; i < stroke.length; i++) {
-                const { x, y } = stroke[i];
-                if (i === 0) {
-                    context.moveTo(x, y);
-                } else {
-                    context.lineTo(x, y);
-                }
+        if (currentStroke){
+          copy.push(currentStroke);
         }
-        context.strokeStyle = "black";
-        context.lineWidth = 2;
-        context.stroke();
-        context.closePath();
+        for (const stroke of copy) {
+            stroke.display(context);
         }
     }
   });
@@ -78,6 +92,7 @@ function clearCanvas() {
         context.clearRect(0, 0, canvas.width, canvas.height);
         // confused if slides want clear->undo to be viable...
         drawing = [];
+        canvas.dispatchEvent(new Event("drawing-changed"));
     }
 }
 
@@ -89,8 +104,8 @@ function undoCanvas() {
         }
         canvas.dispatchEvent(new Event("drawing-changed"));
     }
-    else if (currentStroke.length > 0){
-        currentStroke = [];
+    else if (currentStroke){
+        currentStroke = null;
         canvas.dispatchEvent(new Event("drawing-changed"));
     }
 }
