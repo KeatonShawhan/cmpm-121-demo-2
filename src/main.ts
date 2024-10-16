@@ -18,9 +18,11 @@ app.append(canvas);
 
 class MarkerLine {
     private points: Array<{ x: number; y: number }>;
+    private thickness: number;
   
-    constructor(initialX: number, initialY: number) {
+    constructor(initialX: number, initialY: number, thickness: number) {
       this.points = [{ x: initialX, y: initialY }];
+      this.thickness = thickness;
     }
   
     drag(x: number, y: number) {
@@ -38,12 +40,13 @@ class MarkerLine {
       }
   
       ctx.strokeStyle = "black";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = this.thickness;
       ctx.stroke();
       ctx.closePath();
     }
-  }  
+}  
   
+let currentThickness = 3;
 
 let drawing: Array<MarkerLine> = [];
 let currentStroke: MarkerLine | null = null;
@@ -55,7 +58,7 @@ const context = canvas.getContext("2d");
 
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
-  currentStroke = new MarkerLine(e.offsetX, e.offsetY);
+  currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
 });
   
 canvas.addEventListener("mousemove", (e) => {
@@ -120,17 +123,37 @@ function redoCanvas() {
     }
 }
 
+function setMarkerThickness(thickness: number, selectedButton: HTMLButtonElement) {
+    if (selectedButton.classList.contains("selectedTool")){
+        currentThickness = 3;
+        selectedButton.classList.remove("selectedTool");
+        return;
+    }
+    currentThickness = thickness;
+    document.querySelectorAll(".tool-button").forEach(button => button.classList.remove("selectedTool"));
+    selectedButton.classList.add("selectedTool");
+}
+
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
 clearButton.addEventListener("click", clearCanvas);
-app.append(clearButton);
 
 const undoButton = document.createElement("button");
 undoButton.innerHTML = "Undo";
 undoButton.addEventListener("click", undoCanvas);
-app.append(undoButton);
 
 const redoButton = document.createElement("button");
 redoButton.innerHTML = "Redo";
 redoButton.addEventListener("click", redoCanvas);
-app.append(redoButton);
+
+const thinButton = document.createElement("button");
+thinButton.innerHTML = "Thin Marker";
+thinButton.classList.add("tool-button");
+thinButton.addEventListener("click", () => setMarkerThickness(1, thinButton));
+
+const thickButton = document.createElement("button");
+thickButton.innerHTML = "Thick Marker";
+thickButton.classList.add("tool-button");
+thickButton.addEventListener("click", () => setMarkerThickness(6, thickButton));
+
+app.append(thinButton, thickButton, clearButton, undoButton, redoButton);
