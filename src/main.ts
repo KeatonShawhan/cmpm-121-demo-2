@@ -16,44 +16,59 @@ canvas.width = 256;
 canvas.height = 256;
 app.append(canvas);
 
+let drawing: Array<Array<{ x: number; y: number }>> = [];
+let currentStroke: Array<{ x: number; y: number }> = [];
+
 let isDrawing = false;
-let x = 0;
-let y = 0;
 
 const context = canvas.getContext("2d");
 
 canvas.addEventListener("mousedown", (e) => {
-  x = e.offsetX;
-  y = e.offsetY;
-  isDrawing = true;
-});
-
-canvas.addEventListener("mousemove", (e) => {
-  if (isDrawing) {
-    drawLine(context, x, y, e.offsetX, e.offsetY);
-    x = e.offsetX;
-    y = e.offsetY;
-  }
-});
-
-window.addEventListener("mouseup", (e) => {
-  if (isDrawing) {
-    drawLine(context, x, y, e.offsetX, e.offsetY);
-    x = 0;
-    y = 0;
-    isDrawing = false;
-  }
-});
-
-function drawLine(context, x1, y1, x2, y2) {
-  context.beginPath();
-  context.strokeStyle = "black";
-  context.lineWidth = 2;
-  context.moveTo(x1, y1);
-  context.lineTo(x2, y2);
-  context.stroke();
-  context.closePath();
-}
+    isDrawing = true;
+    currentStroke = [];
+    const point = { x: e.offsetX, y: e.offsetY };
+    currentStroke.push(point);
+  });
+  
+  canvas.addEventListener("mousemove", (e) => {
+    if (isDrawing) {
+      const point = { x: e.offsetX, y: e.offsetY };
+      currentStroke.push(point);
+      canvas.dispatchEvent(new Event("drawing-changed"));
+    }
+  });
+  
+  window.addEventListener("mouseup", () => {
+    if (isDrawing) {
+      isDrawing = false;
+      if (currentStroke.length > 0) {
+        drawing.push(currentStroke);
+        canvas.dispatchEvent(new Event("drawing-changed"));
+      }
+    }
+  });
+  
+  canvas.addEventListener("drawing-changed", () => {
+    if (context){
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    
+        for (const stroke of drawing) {
+            context.beginPath();
+            for (let i = 0; i < stroke.length; i++) {
+                const { x, y } = stroke[i];
+                if (i === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+        }
+        context.strokeStyle = "black";
+        context.lineWidth = 1;
+        context.stroke();
+        context.closePath();
+        }
+    }
+  });
 
 function clearCanvas() {
     if (context){
