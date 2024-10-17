@@ -16,19 +16,28 @@ canvas.width = 256;
 canvas.height = 256;
 app.append(canvas);
 
-class MarkerLine {
-    private points: Array<{ x: number; y: number }>;
-    private thickness: number;
-  
-    constructor(initialX: number, initialY: number, thickness: number) {
-      this.points = [{ x: initialX, y: initialY }];
-      this.thickness = thickness;
-    }
-  
+interface MarkerLine {
+  points: Array<{ x: number; y: number }>;
+  thickness: number;
+  drag: (x: number, y: number) => void;
+  display: (ctx: CanvasRenderingContext2D) => void;
+}
+
+interface ToolPreview {
+  x: number;
+  y: number;
+  thickness: number;
+  draw: (ctx: CanvasRenderingContext2D) => void;
+}
+
+function createMarkerLine(initialX: number, initialY: number, thickness: number): MarkerLine {
+  const points: Array<{ x: number; y: number }> = [{ x: initialX, y: initialY }];
+  return {
+    points,
+    thickness,
     drag(x: number, y: number) {
-      this.points.push({ x, y });
-    }
-  
+      points.push({ x, y });
+    },
     display(ctx: CanvasRenderingContext2D) {
       if (this.points.length === 0) return;
   
@@ -44,19 +53,14 @@ class MarkerLine {
       ctx.stroke();
       ctx.closePath();
     }
+  };
 }
 
-class ToolPreview {
-    x: number;
-    y: number;
-    thickness: number;
-  
-    constructor(x: number, y: number, thickness: number) {
-      this.x = x;
-      this.y = y;
-      this.thickness = thickness;
-    }
-  
+function createToolPreview(x: number, y: number, thickness: number): ToolPreview {
+  return {
+    x,
+    y,
+    thickness,
     draw(ctx: CanvasRenderingContext2D) {
       if (ctx) {
         ctx.beginPath();
@@ -69,8 +73,9 @@ class ToolPreview {
         ctx.closePath();
       }
     }
+  };
 }
-  
+
 let currentThickness = 3;
 
 let drawing: Array<MarkerLine> = [];
@@ -84,7 +89,7 @@ const context = canvas.getContext("2d");
 
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
-  currentStroke = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
+  currentStroke = createMarkerLine(e.offsetX, e.offsetY, currentThickness);
   currentToolPreview = null;
   canvas.style.cursor = "none";
 });
@@ -93,110 +98,105 @@ canvas.addEventListener("mousemove", (e) => {
   if (currentStroke && isDrawing) {
     currentStroke.drag(e.offsetX, e.offsetY);
     canvas.dispatchEvent(new Event("drawing-changed"));
-  } else{
-    currentToolPreview = null;
+  } else {
+    currentToolPreview = createToolPreview(e.offsetX, e.offsetY, currentThickness);
+    canvas.dispatchEvent(new Event("tool-moved"));
+  }
+});
+  
+window.addEventListener("mouseup", () => {
+  if (isDrawing && currentStroke) {
+    isDrawing = false;
+    drawing.push(currentStroke);
+    currentStroke = null;
+    canvas.dispatchEvent(new Event("drawing-changed"));
     updateCursor(currentThickness);
   }
 });
   
-  window.addEventListener("mouseup", () => {
-    if (isDrawing && currentStroke) {
-      isDrawing = false;
-      drawing.push(currentStroke);
-      currentStroke = null;
-      canvas.dispatchEvent(new Event("drawing-changed"));
-      updateCursor(currentThickness);
+canvas.addEventListener("drawing-changed", () => {
+  if (context) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    let copy = [...drawing];
+    if (currentStroke) {
+      copy.push(currentStroke);
     }
-  });
-  
-  canvas.addEventListener("drawing-changed", () => {
-    if (context){
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        let copy = [...drawing];
-        if (currentStroke){
-          copy.push(currentStroke);
-        }
-        for (const stroke of copy) {
-            stroke.display(context);
-        }
+    for (const stroke of copy) {
+      stroke.display(context);
     }
-  });
+  }
+});
 
-  canvas.addEventListener("tool-moved", () => {
-    if (context) {
-      context.clearRect(0, 0, canvas.width, canvas.height);
+canvas.addEventListener("tool-moved", () => {
+  if (context) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
   
-      for (const line of drawing) {
-        line.display(context);
-      }
-  
-      currentToolPreview?.draw(context);
+    for (const line of drawing) {
+      line.display(context);
     }
-  });
+  
+    currentToolPreview?.draw(context);
+  }
+});
 
 function clearCanvas() {
-    if (context){
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        // confused if slides want clear->undo to be viable...
-        drawing = [];
-        canvas.dispatchEvent(new Event("drawing-changed"));
-    }
+  if (context) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawing = [];
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
 }
 
 function undoCanvas() {
-    if (drawing.length > 0){
-        const pop = drawing.pop();
-        if (pop) {
-            redo.push(pop);
-        }
-        canvas.dispatchEvent(new Event("drawing-changed"));
+  if (drawing.length > 0) {
+    const pop = drawing.pop();
+    if (pop) {
+      redo.push(pop);
     }
-    else if (currentStroke){
-        currentStroke = null;
-        canvas.dispatchEvent(new Event("drawing-changed"));
-    }
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
 }
 
 function redoCanvas() {
-    if (redo.length > 0) {
-        const pop = redo.pop();
-        if (pop){
-            drawing.push(pop);
-        }
-        canvas.dispatchEvent(new Event("drawing-changed"));
+  if (redo.length > 0) {
+    const pop = redo.pop();
+    if (pop) {
+      drawing.push(pop);
     }
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
 }
 
 function setMarkerThickness(thickness: number, selectedButton: HTMLButtonElement) {
-    if (selectedButton.classList.contains("selectedTool")){
-        currentThickness = 3;
-        selectedButton.classList.remove("selectedTool");
-        updateCursor(thickness);
-        return;
-    }
-    currentThickness = thickness;
-    document.querySelectorAll(".tool-button").forEach(button => button.classList.remove("selectedTool"));
-    selectedButton.classList.add("selectedTool");
+  if (selectedButton.classList.contains("selectedTool")) {
+    currentThickness = 3;
+    selectedButton.classList.remove("selectedTool");
     updateCursor(thickness);
+    return;
+  }
+  currentThickness = thickness;
+  document.querySelectorAll(".tool-button").forEach(button => button.classList.remove("selectedTool"));
+  selectedButton.classList.add("selectedTool");
+  updateCursor(thickness);
 }
 
 function updateCursor(thickness: number) {
-    const cursorCanvas = document.createElement("canvas");
-    cursorCanvas.width = thickness * 2;
-    cursorCanvas.height = thickness * 2;
-  
-    const ctx = cursorCanvas.getContext("2d");
-    if (ctx) {
-      ctx.beginPath();
-      ctx.arc(thickness, thickness, thickness, 0, 2 * Math.PI);
-      ctx.fillStyle = "black";
-      ctx.fill();
-      ctx.closePath();
-    }
-  
-    const dataURL = cursorCanvas.toDataURL("image/png");
-    canvas.style.cursor = `url(${dataURL}) ${thickness / 2} ${thickness / 2}, auto`;
+  const cursorCanvas = document.createElement("canvas");
+  cursorCanvas.width = thickness * 2;
+  cursorCanvas.height = thickness * 2;
+
+  const ctx = cursorCanvas.getContext("2d");
+  if (ctx) {
+    ctx.beginPath();
+    ctx.arc(thickness, thickness, thickness, 0, 2 * Math.PI);
+    ctx.fillStyle = "black";
+    ctx.fill();
+    ctx.closePath();
   }
+
+  const dataURL = cursorCanvas.toDataURL("image/png");
+  canvas.style.cursor = `url(${dataURL}) ${thickness / 2} ${thickness / 2}, auto`;
+}
 
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
