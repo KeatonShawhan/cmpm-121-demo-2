@@ -7,11 +7,11 @@ document.title = APP_NAME;
 app.innerHTML = APP_NAME;
 
 const title = document.createElement("h1");
-title.innerHTML = "Cool sketch thingy"
+title.innerHTML = "Cool sketch thingy";
 app.append(title);
 
 const canvas = document.createElement("canvas");
-canvas.classList.add('custom-canvas');
+canvas.classList.add("custom-canvas");
 canvas.width = 256;
 canvas.height = 256;
 app.append(canvas);
@@ -30,7 +30,19 @@ interface ToolPreview {
   draw: (ctx: CanvasRenderingContext2D) => void;
 }
 
-function createMarkerLine(initialX: number, initialY: number, thickness: number): MarkerLine {
+interface Sticker {
+  x: number;
+  y: number;
+  emoji: string;
+  drag: (x: number, y: number) => void;
+  display: (ctx: CanvasRenderingContext2D) => void;
+}
+
+function createMarkerLine(
+  initialX: number,
+  initialY: number,
+  thickness: number
+): MarkerLine {
   const points: Array<{ x: number; y: number }> = [{ x: initialX, y: initialY }];
   return {
     points,
@@ -40,19 +52,19 @@ function createMarkerLine(initialX: number, initialY: number, thickness: number)
     },
     display(ctx: CanvasRenderingContext2D) {
       if (this.points.length === 0) return;
-  
+
       ctx.beginPath();
       ctx.moveTo(this.points[0].x, this.points[0].y);
-  
+
       for (let i = 1; i < this.points.length; i++) {
         ctx.lineTo(this.points[i].x, this.points[i].y);
       }
-  
+
       ctx.strokeStyle = "black";
       ctx.lineWidth = this.thickness;
       ctx.stroke();
       ctx.closePath();
-    }
+    },
   };
 }
 
@@ -72,15 +84,33 @@ function createToolPreview(x: number, y: number, thickness: number): ToolPreview
         ctx.stroke();
         ctx.closePath();
       }
-    }
+    },
+  };
+}
+
+function createSticker(x: number, y: number, emoji: string): Sticker {
+  return {
+    x,
+    y,
+    emoji,
+    drag(newX: number, newY: number) {
+      this.x = newX;
+      this.y = newY;
+    },
+    display(ctx: CanvasRenderingContext2D) {
+      if (ctx) {
+        ctx.font = "30px Arial";
+        ctx.fillText(this.emoji, this.x, this.y);
+      }
+    },
   };
 }
 
 let currentThickness = 3;
-
-let drawing: Array<MarkerLine> = [];
+let selectedSticker: string | null = null;
+let drawing: Array<MarkerLine | Sticker> = [];
 let currentStroke: MarkerLine | null = null;
-let redo: Array<MarkerLine> = [];
+let redo: Array<MarkerLine | Sticker> = [];
 let currentToolPreview: ToolPreview | null = null;
 
 let isDrawing = false;
@@ -88,22 +118,40 @@ let isDrawing = false;
 const context = canvas.getContext("2d");
 
 canvas.addEventListener("mousedown", (e) => {
+  if (selectedSticker) {
+    const sticker = createSticker(e.offsetX, e.offsetY, selectedSticker);
+    drawing.push(sticker);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+    
+    selectedSticker = null;
+    updateCursorWithEmoji("");
+    clearButtonSelection();
+    
+    return;
+  }
+  
   isDrawing = true;
   currentStroke = createMarkerLine(e.offsetX, e.offsetY, currentThickness);
   currentToolPreview = null;
   canvas.style.cursor = "none";
 });
-  
+
+function clearButtonSelection() {
+  document
+    .querySelectorAll(".tool-button")
+    .forEach((button) => button.classList.remove("selectedTool"));
+}
+
 canvas.addEventListener("mousemove", (e) => {
   if (currentStroke && isDrawing) {
     currentStroke.drag(e.offsetX, e.offsetY);
     canvas.dispatchEvent(new Event("drawing-changed"));
-  } else {
+  } else if (selectedSticker) {
     currentToolPreview = createToolPreview(e.offsetX, e.offsetY, currentThickness);
     canvas.dispatchEvent(new Event("tool-moved"));
   }
 });
-  
+
 window.addEventListener("mouseup", () => {
   if (isDrawing && currentStroke) {
     isDrawing = false;
@@ -113,7 +161,7 @@ window.addEventListener("mouseup", () => {
     updateCursor(currentThickness);
   }
 });
-  
+
 canvas.addEventListener("drawing-changed", () => {
   if (context) {
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -121,8 +169,8 @@ canvas.addEventListener("drawing-changed", () => {
     if (currentStroke) {
       copy.push(currentStroke);
     }
-    for (const stroke of copy) {
-      stroke.display(context);
+    for (const item of copy) {
+      item.display(context);
     }
   }
 });
@@ -130,14 +178,56 @@ canvas.addEventListener("drawing-changed", () => {
 canvas.addEventListener("tool-moved", () => {
   if (context) {
     context.clearRect(0, 0, canvas.width, canvas.height);
-  
-    for (const line of drawing) {
-      line.display(context);
+
+    for (const item of drawing) {
+      item.display(context);
     }
-  
+
     currentToolPreview?.draw(context);
   }
 });
+
+const stickers = ["😀", "🔥", "🍕"];
+stickers.forEach((emoji) => {
+  const stickerButton = document.createElement("button");
+  stickerButton.innerHTML = emoji;
+  stickerButton.addEventListener("click", () => {
+    selectedSticker = emoji;
+    updateCursorWithEmoji(emoji);
+    updateButtonSelection(stickerButton);
+    canvas.dispatchEvent(new Event("tool-moved"));
+  });
+  stickerButton.classList.add("tool-button");
+  app.append(stickerButton);
+});
+
+function updateCursorWithEmoji(emoji: string) {
+  if (emoji === "") {
+    canvas.style.cursor = "default";
+    return;
+  }
+
+  const cursorCanvas = document.createElement("canvas");
+  cursorCanvas.width = 50;
+  cursorCanvas.height = 50;
+
+  const ctx = cursorCanvas.getContext("2d");
+  if (ctx) {
+    ctx.font = "40px Arial";
+    ctx.fillText(emoji, 5, 35);
+  }
+
+  const dataURL = cursorCanvas.toDataURL("image/png");
+  canvas.style.cursor = `url(${dataURL}) 25 25, auto`;
+}
+
+function updateButtonSelection(selectedButton: HTMLButtonElement) {
+  document
+    .querySelectorAll(".tool-button")
+    .forEach((button) => button.classList.remove("selectedTool"));
+
+  selectedButton.classList.add("selectedTool");
+}
 
 function clearCanvas() {
   if (context) {
@@ -175,7 +265,9 @@ function setMarkerThickness(thickness: number, selectedButton: HTMLButtonElement
     return;
   }
   currentThickness = thickness;
-  document.querySelectorAll(".tool-button").forEach(button => button.classList.remove("selectedTool"));
+  document
+    .querySelectorAll(".tool-button")
+    .forEach((button) => button.classList.remove("selectedTool"));
   selectedButton.classList.add("selectedTool");
   updateCursor(thickness);
 }
@@ -195,7 +287,7 @@ function updateCursor(thickness: number) {
   }
 
   const dataURL = cursorCanvas.toDataURL("image/png");
-  canvas.style.cursor = `url(${dataURL}) ${thickness / 2} ${thickness / 2}, auto`;
+  canvas.style.cursor = `url(${dataURL}) ${thickness} ${thickness}, auto`;
 }
 
 const clearButton = document.createElement("button");
@@ -210,16 +302,29 @@ const redoButton = document.createElement("button");
 redoButton.innerHTML = "Redo";
 redoButton.addEventListener("click", redoCanvas);
 
-const thinButton = document.createElement("button");
-thinButton.innerHTML = "Thin Marker";
-thinButton.classList.add("tool-button");
-thinButton.addEventListener("click", () => setMarkerThickness(1, thinButton));
+const sizeButtonSmall = document.createElement("button");
+sizeButtonSmall.innerHTML = "Thin Marker";
+sizeButtonSmall.addEventListener("click", (e) =>
+  setMarkerThickness(1, e.target as HTMLButtonElement)
+);
 
-const thickButton = document.createElement("button");
-thickButton.innerHTML = "Thick Marker";
-thickButton.classList.add("tool-button");
-thickButton.addEventListener("click", () => setMarkerThickness(6, thickButton));
+const sizeButtonMedium = document.createElement("button");
+sizeButtonMedium.innerHTML = "Medium Marker";
+sizeButtonMedium.addEventListener("click", (e) =>
+  setMarkerThickness(4, e.target as HTMLButtonElement)
+);
+sizeButtonMedium.classList.add("selectedTool");
+updateCursor(4);
 
-app.append(thinButton, thickButton, clearButton, undoButton, redoButton);
+const sizeButtonLarge = document.createElement("button");
+sizeButtonLarge.innerHTML = "Large Marker";
+sizeButtonLarge.addEventListener("click", (e) =>
+  setMarkerThickness(8, e.target as HTMLButtonElement)
+);
 
-updateCursor(currentThickness);
+[clearButton, undoButton, redoButton, sizeButtonSmall, sizeButtonMedium, sizeButtonLarge].forEach(
+  (button) => {
+    button.classList.add("tool-button");
+    app.append(button);
+  }
+);
