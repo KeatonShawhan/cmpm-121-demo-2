@@ -14,6 +14,8 @@ const canvas = document.createElement("canvas");
 canvas.classList.add("custom-canvas");
 canvas.width = 256;
 canvas.height = 256;
+canvas.style.marginLeft = "38%";
+canvas.style.marginRight = "38%";
 app.append(canvas);
 
 interface MarkerLine {
@@ -112,7 +114,6 @@ let drawing: Array<MarkerLine | Sticker> = [];
 let currentStroke: MarkerLine | null = null;
 let redo: Array<MarkerLine | Sticker> = [];
 let currentToolPreview: ToolPreview | null = null;
-
 let isDrawing = false;
 
 const context = canvas.getContext("2d");
@@ -140,6 +141,8 @@ function clearButtonSelection() {
   document
     .querySelectorAll(".tool-button")
     .forEach((button) => button.classList.remove("selectedTool"));
+    lastButton.classList.add("selectedTool");
+    updateCursor(currentThickness);
 }
 
 canvas.addEventListener("mousemove", (e) => {
@@ -188,7 +191,8 @@ canvas.addEventListener("tool-moved", () => {
 });
 
 const stickers = ["😀", "🔥", "🍕"];
-stickers.forEach((emoji) => {
+let customStickers: string[] = [];
+function createStickerButton(emoji: string) {
   const stickerButton = document.createElement("button");
   stickerButton.innerHTML = emoji;
   stickerButton.addEventListener("click", () => {
@@ -199,7 +203,18 @@ stickers.forEach((emoji) => {
   });
   stickerButton.classList.add("tool-button");
   app.append(stickerButton);
-});
+};
+
+stickers.forEach((sticker) => createStickerButton(sticker));
+
+function addCustomSticker() {
+  const customSticker = prompt("Enter your custom sticker:", "🌟");
+
+  if (customSticker && customSticker.length > 0) {
+    customStickers.push(customSticker);
+    createStickerButton(customSticker);
+  }
+}
 
 function updateCursorWithEmoji(emoji: string) {
   if (emoji === "") {
@@ -226,6 +241,9 @@ function updateButtonSelection(selectedButton: HTMLButtonElement) {
     .querySelectorAll(".tool-button")
     .forEach((button) => button.classList.remove("selectedTool"));
 
+    if (!selectedSticker){
+      lastButton = selectedButton;
+    }
   selectedButton.classList.add("selectedTool");
 }
 
@@ -258,12 +276,6 @@ function redoCanvas() {
 }
 
 function setMarkerThickness(thickness: number, selectedButton: HTMLButtonElement) {
-  if (selectedButton.classList.contains("selectedTool")) {
-    currentThickness = 3;
-    selectedButton.classList.remove("selectedTool");
-    updateCursor(thickness);
-    return;
-  }
   currentThickness = thickness;
   document
     .querySelectorAll(".tool-button")
@@ -315,6 +327,7 @@ sizeButtonMedium.addEventListener("click", (e) =>
 );
 sizeButtonMedium.classList.add("selectedTool");
 updateCursor(4);
+let lastButton: HTMLButtonElement = sizeButtonMedium;
 
 const sizeButtonLarge = document.createElement("button");
 sizeButtonLarge.innerHTML = "Large Marker";
@@ -322,7 +335,11 @@ sizeButtonLarge.addEventListener("click", (e) =>
   setMarkerThickness(8, e.target as HTMLButtonElement)
 );
 
-[clearButton, undoButton, redoButton, sizeButtonSmall, sizeButtonMedium, sizeButtonLarge].forEach(
+const customStickerButton = document.createElement("button");
+customStickerButton.innerHTML = "Custom Sticker";
+customStickerButton.addEventListener("click", () => addCustomSticker());
+
+[clearButton, undoButton, redoButton, sizeButtonSmall, sizeButtonMedium, sizeButtonLarge, customStickerButton].forEach(
   (button) => {
     button.classList.add("tool-button");
     app.append(button);
