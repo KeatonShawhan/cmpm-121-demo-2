@@ -1,14 +1,10 @@
 import "./style.css";
 
-const APP_NAME = "Hi";
+const APP_NAME = "Cool sketch thingy";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 document.title = APP_NAME;
 app.innerHTML = APP_NAME;
-
-const title = document.createElement("h1");
-title.innerHTML = "Cool sketch thingy";
-app.append(title);
 
 const canvas = document.createElement("canvas");
 canvas.classList.add("custom-canvas");
@@ -108,7 +104,7 @@ function createSticker(x: number, y: number, emoji: string): Sticker {
   };
 }
 
-let currentThickness = 3;
+let currentThickness = 5;
 let selectedSticker: string | null = null;
 let drawing: Array<MarkerLine | Sticker> = [];
 let currentStroke: MarkerLine | null = null;
@@ -192,6 +188,7 @@ canvas.addEventListener("tool-moved", () => {
 
 const stickers = ["😀", "🔥", "🍕"];
 let customStickers: string[] = [];
+
 function createStickerButton(emoji: string) {
   const stickerButton = document.createElement("button");
   stickerButton.innerHTML = emoji;
@@ -340,22 +337,22 @@ redoButton.addEventListener("click", redoCanvas);
 const sizeButtonSmall = document.createElement("button");
 sizeButtonSmall.innerHTML = "Thin Marker";
 sizeButtonSmall.addEventListener("click", (e) =>
-  setMarkerThickness(1, e.target as HTMLButtonElement)
+  setMarkerThickness(2, e.target as HTMLButtonElement)
 );
 
 const sizeButtonMedium = document.createElement("button");
 sizeButtonMedium.innerHTML = "Medium Marker";
 sizeButtonMedium.addEventListener("click", (e) =>
-  setMarkerThickness(4, e.target as HTMLButtonElement)
+  setMarkerThickness(5, e.target as HTMLButtonElement)
 );
 sizeButtonMedium.classList.add("selectedTool");
-updateCursor(4);
+updateCursor(5);
 let lastButton: HTMLButtonElement = sizeButtonMedium;
 
 const sizeButtonLarge = document.createElement("button");
 sizeButtonLarge.innerHTML = "Large Marker";
 sizeButtonLarge.addEventListener("click", (e) =>
-  setMarkerThickness(8, e.target as HTMLButtonElement)
+  setMarkerThickness(10, e.target as HTMLButtonElement)
 );
 
 const customStickerButton = document.createElement("button");
