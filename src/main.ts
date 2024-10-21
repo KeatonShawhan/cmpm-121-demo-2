@@ -302,6 +302,29 @@ function updateCursor(thickness: number) {
   canvas.style.cursor = `url(${dataURL}) ${thickness} ${thickness}, auto`;
 }
 
+function exportDrawing() {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportContext = exportCanvas.getContext("2d");
+  
+  if (exportContext) {
+    exportContext.scale(4, 4);
+
+    exportContext.fillStyle = "white";
+    exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    drawing.forEach((stroke) => stroke.display(exportContext));
+
+    const dataURL = exportCanvas.toDataURL("image/png");
+
+    const downloadLink = document.createElement("a");
+    downloadLink.href = dataURL;
+    downloadLink.download = "sketchpad.png";
+    downloadLink.click();
+  }
+}
+
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
 clearButton.addEventListener("click", clearCanvas);
@@ -338,6 +361,11 @@ sizeButtonLarge.addEventListener("click", (e) =>
 const customStickerButton = document.createElement("button");
 customStickerButton.innerHTML = "Custom Sticker";
 customStickerButton.addEventListener("click", () => addCustomSticker());
+
+const exportButton = document.createElement("button");
+exportButton.innerHTML = "Export";
+exportButton.addEventListener("click", exportDrawing);
+app.append(exportButton);
 
 [clearButton, undoButton, redoButton, sizeButtonSmall, sizeButtonMedium, sizeButtonLarge, customStickerButton].forEach(
   (button) => {
