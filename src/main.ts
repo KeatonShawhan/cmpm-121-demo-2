@@ -39,7 +39,8 @@ interface Sticker {
 function createMarkerLine(
   initialX: number,
   initialY: number,
-  thickness: number
+  thickness: number,
+  color: string
 ): MarkerLine {
   const points: Array<{ x: number; y: number }> = [{ x: initialX, y: initialY }];
   return {
@@ -58,7 +59,7 @@ function createMarkerLine(
         ctx.lineTo(this.points[i].x, this.points[i].y);
       }
 
-      ctx.strokeStyle = "black";
+      ctx.strokeStyle = color;
       ctx.lineWidth = this.thickness;
       ctx.stroke();
       ctx.closePath();
@@ -105,6 +106,7 @@ function createSticker(x: number, y: number, emoji: string): Sticker {
 }
 
 let currentThickness = 5;
+let currentColor = "#000000";
 let selectedSticker: string | null = null;
 let drawing: Array<MarkerLine | Sticker> = [];
 let currentStroke: MarkerLine | null = null;
@@ -128,10 +130,14 @@ canvas.addEventListener("mousedown", (e) => {
   }
   
   isDrawing = true;
-  currentStroke = createMarkerLine(e.offsetX, e.offsetY, currentThickness);
+  currentStroke = createMarkerLine(e.offsetX, e.offsetY, currentThickness, currentColor);
   currentToolPreview = null;
   canvas.style.cursor = "none";
 });
+
+function colorSwap(){
+  currentColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+}
 
 function clearButtonSelection() {
   document
@@ -222,7 +228,7 @@ function updateCursorWithEmoji(emoji: string) {
   const cursorCanvas = document.createElement("canvas");
   cursorCanvas.width = 50;
   cursorCanvas.height = 50;
-
+  colorSwap();
   const ctx = cursorCanvas.getContext("2d");
   if (ctx) {
     ctx.font = "40px Arial";
@@ -278,6 +284,7 @@ function setMarkerThickness(thickness: number, selectedButton: HTMLButtonElement
     .querySelectorAll(".tool-button")
     .forEach((button) => button.classList.remove("selectedTool"));
   selectedButton.classList.add("selectedTool");
+  colorSwap();
   updateCursor(thickness);
 }
 
@@ -285,12 +292,11 @@ function updateCursor(thickness: number) {
   const cursorCanvas = document.createElement("canvas");
   cursorCanvas.width = thickness * 2;
   cursorCanvas.height = thickness * 2;
-
   const ctx = cursorCanvas.getContext("2d");
   if (ctx) {
     ctx.beginPath();
     ctx.arc(thickness, thickness, thickness, 0, 2 * Math.PI);
-    ctx.fillStyle = "black";
+    ctx.fillStyle = currentColor;
     ctx.fill();
     ctx.closePath();
   }
