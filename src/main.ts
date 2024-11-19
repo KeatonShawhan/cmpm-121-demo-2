@@ -1,18 +1,31 @@
 import "./style.css";
 
-const APP_NAME = "Cool sketch thingy";
+const APP_NAME = "cool sketch thingy";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 document.title = APP_NAME;
-app.innerHTML = APP_NAME;
+//app.innerHTML = APP_NAME;
+const title = document.createElement("h1");
+title.innerHTML = APP_NAME
+app.append(title);
 
 const canvas = document.createElement("canvas");
 canvas.classList.add("custom-canvas");
 canvas.width = 256;
 canvas.height = 256;
-canvas.style.marginLeft = "38%";
-canvas.style.marginRight = "38%";
 app.append(canvas);
+
+const boxContainer = document.createElement("div")
+const upperBox = document.createElement("div");
+const lowerBox = document.createElement("div");
+
+app.append(boxContainer);
+boxContainer.classList.add("boxContainer");
+
+boxContainer.append(upperBox);
+boxContainer.append(lowerBox);
+
+
 
 interface MarkerLine {
   points: Array<{ x: number; y: number }>;
@@ -205,7 +218,7 @@ function createStickerButton(emoji: string) {
     canvas.dispatchEvent(new Event("tool-moved"));
   });
   stickerButton.classList.add("tool-button");
-  app.append(stickerButton);
+  upperBox.append(stickerButton);
 };
 
 stickers.forEach((sticker) => createStickerButton(sticker));
@@ -368,11 +381,18 @@ customStickerButton.addEventListener("click", () => addCustomSticker());
 const exportButton = document.createElement("button");
 exportButton.innerHTML = "Export";
 exportButton.addEventListener("click", exportDrawing);
-app.append(exportButton);
+upperBox.append(exportButton);
 
-[clearButton, undoButton, redoButton, sizeButtonSmall, sizeButtonMedium, sizeButtonLarge, customStickerButton].forEach(
+[clearButton, undoButton, redoButton].forEach(
   (button) => {
     button.classList.add("tool-button");
-    app.append(button);
+    upperBox.append(button);
+  }
+);
+
+[sizeButtonSmall, sizeButtonMedium, sizeButtonLarge, customStickerButton].forEach(
+  (button) => {
+    button.classList.add("tool-button");
+    lowerBox.append(button);
   }
 );
