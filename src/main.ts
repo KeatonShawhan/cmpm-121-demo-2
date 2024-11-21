@@ -341,42 +341,36 @@ function exportDrawing() {
   }
 }
 
-const clearButton = document.createElement("button");
-clearButton.innerHTML = "Clear";
-clearButton.addEventListener("click", clearCanvas);
+function createButton(label: string, className: string, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.innerHTML = label;
+  button.classList.add(className);
+  button.addEventListener("click", onClick);
+  return button;
+}
 
-const undoButton = document.createElement("button");
-undoButton.innerHTML = "Undo";
-undoButton.addEventListener("click", undoCanvas);
+const clearButton = createButton("Clear", "tool-button", clearCanvas);
+const undoButton = createButton("Undo", "tool-button", undoCanvas);
+const redoButton = createButton("Redo", "tool-button", redoCanvas);
 
-const redoButton = document.createElement("button");
-redoButton.innerHTML = "Redo";
-redoButton.addEventListener("click", redoCanvas);
+upperBox.append(clearButton, undoButton, redoButton);
 
-const sizeButtonSmall = document.createElement("button");
-sizeButtonSmall.innerHTML = "Thin Marker";
-sizeButtonSmall.addEventListener("click", (e) =>
-  setMarkerThickness(2, e.target as HTMLButtonElement)
+const sizeButtonSmall = createButton("Thin Marker", "tool-button", () =>
+  setMarkerThickness(2, sizeButtonSmall)
+);
+const sizeButtonMedium = createButton("Medium Marker", "tool-button", () =>
+  setMarkerThickness(5, sizeButtonMedium)
+);
+const sizeButtonLarge = createButton("Large Marker", "tool-button", () =>
+  setMarkerThickness(10, sizeButtonLarge)
 );
 
-const sizeButtonMedium = document.createElement("button");
-sizeButtonMedium.innerHTML = "Medium Marker";
-sizeButtonMedium.addEventListener("click", (e) =>
-  setMarkerThickness(5, e.target as HTMLButtonElement)
-);
-sizeButtonMedium.classList.add("selectedTool");
-updateCursor(5);
+lowerBox.append(sizeButtonSmall, sizeButtonMedium, sizeButtonLarge);
+
 let lastButton: HTMLButtonElement = sizeButtonMedium;
 
-const sizeButtonLarge = document.createElement("button");
-sizeButtonLarge.innerHTML = "Large Marker";
-sizeButtonLarge.addEventListener("click", (e) =>
-  setMarkerThickness(10, e.target as HTMLButtonElement)
-);
-
-const customStickerButton = document.createElement("button");
-customStickerButton.innerHTML = "Custom Sticker";
-customStickerButton.addEventListener("click", () => addCustomSticker());
+const customStickerButton = createButton("Custom Sticker", "tool-button", addCustomSticker);
+lowerBox.append(customStickerButton);
 
 const exportButton = document.createElement("button");
 exportButton.innerHTML = "Export";
